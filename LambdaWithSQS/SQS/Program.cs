@@ -1,0 +1,214 @@
+﻿/*******************************************************************************
+* Copyright 2009-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+* 
+* Licensed under the Apache License, Version 2.0 (the "License"). You may
+* not use this file except in compliance with the License. A copy of the
+* License is located at
+* 
+* http://aws.amazon.com/apache2.0/
+* 
+* or in the "license" file accompanying this file. This file is
+* distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+* KIND, either express or implied. See the License for the specific
+* language governing permissions and limitations under the License.
+*******************************************************************************/
+
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Amazon;
+using Amazon.SQS;
+using Amazon.SQS.Model;
+
+namespace SQS
+{
+    class Program
+    {
+        public static void Main(string[] args)
+        {
+            using (var sqs = new AmazonSQSClient())
+            {
+
+                try
+                {
+                    //CreateNewQueue(sqs);
+                    Task.WaitAll(SendBatchMessage(sqs));
+                }
+                catch (AmazonSQSException ex)
+                {
+                    Console.WriteLine("Caught Exception: " + ex.Message);
+                    Console.WriteLine("Response Status Code: " + ex.StatusCode);
+                    Console.WriteLine("Error Code: " + ex.ErrorCode);
+                    Console.WriteLine("Error Type: " + ex.ErrorType);
+                    Console.WriteLine("Request ID: " + ex.RequestId);
+                }
+            }
+
+            Console.WriteLine("Press Enter to continue...");
+            Console.ReadLine();
+        }
+
+        static async Task SendBatchMessage(AmazonSQSClient amazonSqsClient, int numberOfMessage = 3)
+        {
+            var entry1 = CreateNewEntry("Entry1", "John Doe", "123 Main St.");
+            var entry2 = CreateNewEntry("Entry2", "Jane Doe", "Any City, United States");
+            var entry3 = CreateNewEntry("Entry3", "Richard Doe", "789 East Blvd.");
+
+            var request = new SendMessageBatchRequest
+            {
+                Entries = new List<SendMessageBatchRequestEntry>() { entry1, entry2, entry3 },
+                QueueUrl = "https://sqs.us-east-2.amazonaws.com/397984852142/TraiggeringLambdaQ"
+            };
+
+            var response = await amazonSqsClient.SendMessageBatchAsync(request, CancellationToken.None);
+
+            if (response.Successful.Count > 0)
+            {
+                Console.WriteLine("Successfully sent:");
+
+                foreach (var success in response.Successful)
+                {
+                    Console.WriteLine("  For ID: '" + success.Id + "':");
+                    Console.WriteLine("    Message ID = " + success.MessageId);
+                    Console.WriteLine("    MD5 of message attributes = " +
+                      success.MD5OfMessageAttributes);
+                    Console.WriteLine("    MD5 of message body = " +
+                      success.MD5OfMessageBody);
+                }
+            }
+
+            if (response.Failed.Count > 0)
+            {
+                Console.WriteLine("Failed to be sent:");
+
+                foreach (var fail in response.Failed)
+                {
+                    Console.WriteLine("  For ID '" + fail.Id + "':");
+                    Console.WriteLine("    Code = " + fail.Code);
+                    Console.WriteLine("    Message = " + fail.Message);
+                    Console.WriteLine("    Sender's fault? = " +
+                      fail.SenderFault);
+                }
+            }
+
+        }
+
+        private static SendMessageBatchRequestEntry CreateNewEntry(string entryName, string name, string address, int delaySeconds = 0)
+        {
+            return new SendMessageBatchRequestEntry
+            {
+                DelaySeconds = delaySeconds,
+                Id = entryName,
+                MessageAttributes = new Dictionary<string, MessageAttributeValue>
+                {
+                    {
+                      "name", new MessageAttributeValue
+                        { DataType = "String", StringValue = name }
+                    },
+                    {
+                      "address", new MessageAttributeValue
+                        { DataType = "String", StringValue = address }
+                    },
+                    {
+                      "country", new MessageAttributeValue
+                        { DataType = "String", StringValue = "Any Town, United Kingdom" }
+                    }
+                 },
+                MessageBody = $"{name} customer information."
+            };
+        }
+
+        private static void CreateNewQueue(AmazonSQSClient sqs)
+        {
+            Console.WriteLine("===========================================");
+            Console.WriteLine("Getting Started with Amazon SQS");
+            Console.WriteLine("===========================================\n");
+            string myQueueUrl = CreateQueue(sqs);
+            SendMessageToTheQueue(sqs, myQueueUrl);
+            ReceiveMessage(sqs, myQueueUrl);
+        }
+
+        private static void ReceiveMessage(AmazonSQSClient sqs, string myQueueUrl)
+        {
+            //Receiving a message
+            var receiveMessageRequest = new ReceiveMessageRequest { QueueUrl = myQueueUrl };
+            var receiveMessageResponse = sqs.ReceiveMessage(receiveMessageRequest);
+            if (receiveMessageResponse.Messages != null)
+            {
+                Console.WriteLine("Printing received message.\n");
+                foreach (var message in receiveMessageResponse.Messages)
+                {
+                    Console.WriteLine("  Message");
+                    if (!string.IsNullOrEmpty(message.MessageId))
+                    {
+                        Console.WriteLine("    MessageId: {0}", message.MessageId);
+                    }
+                    if (!string.IsNullOrEmpty(message.ReceiptHandle))
+                    {
+                        Console.WriteLine("    ReceiptHandle: {0}", message.ReceiptHandle);
+                    }
+                    if (!string.IsNullOrEmpty(message.MD5OfBody))
+                    {
+                        Console.WriteLine("    MD5OfBody: {0}", message.MD5OfBody);
+                    }
+                    if (!string.IsNullOrEmpty(message.Body))
+                    {
+                        Console.WriteLine("    Body: {0}", message.Body);
+                    }
+
+                    foreach (string attributeKey in message.Attributes.Keys)
+                    {
+                        Console.WriteLine("  Attribute");
+                        Console.WriteLine("    Name: {0}", attributeKey);
+                        var value = message.Attributes[attributeKey];
+                        Console.WriteLine("    Value: {0}", string.IsNullOrEmpty(value) ? "(no value)" : value);
+                    }
+                }
+
+                var messageRecieptHandle = receiveMessageResponse.Messages[0].ReceiptHandle;
+
+                //Deleting a message
+                Console.WriteLine("Deleting the message.\n");
+                var deleteRequest = new DeleteMessageRequest { QueueUrl = myQueueUrl, ReceiptHandle = messageRecieptHandle };
+                sqs.DeleteMessage(deleteRequest);
+            }
+        }
+
+        private static void SendMessageToTheQueue(AmazonSQSClient sqs, string myQueueUrl)
+        {
+            //Sending a message
+            Console.WriteLine("Sending a message to MyQueue.\n");
+            var sendMessageRequest = new SendMessageRequest
+            {
+                QueueUrl = myQueueUrl, //URL from initial queue creation
+                MessageBody = "This is my message text."
+            };
+            sqs.SendMessage(sendMessageRequest);
+        }
+
+        private static string CreateQueue(AmazonSQSClient sqs)
+        {
+            //Creating a queue
+            Console.WriteLine("Create a queue called MyQueue.\n");
+            var sqsRequest = new CreateQueueRequest { QueueName = "MyQueue" };
+            var createQueueResponse = sqs.CreateQueue(sqsRequest);
+            string myQueueUrl = createQueueResponse.QueueUrl;
+
+            //Confirming the queue exists
+            var listQueuesRequest = new ListQueuesRequest();
+            var listQueuesResponse = sqs.ListQueues(listQueuesRequest);
+
+            Console.WriteLine("Printing list of Amazon SQS queues.\n");
+            if (listQueuesResponse.QueueUrls != null)
+            {
+                foreach (String queueUrl in listQueuesResponse.QueueUrls)
+                {
+                    Console.WriteLine("  QueueUrl: {0}", queueUrl);
+                }
+            }
+            Console.WriteLine();
+            return myQueueUrl;
+        }
+    }
+}
