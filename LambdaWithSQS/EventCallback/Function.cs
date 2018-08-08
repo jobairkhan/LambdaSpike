@@ -1,8 +1,8 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-
 using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 
@@ -14,28 +14,28 @@ namespace EventCallback
 {
     public class Function
     {
+        int endpointDelay;
+        TimeSpan callbackTimeout;
 
-        const string delayedResponse = "http://mockbin.org/delay/5000"; // delay in milliseconds before replying
+        const string delayedUriFormat = "http://mockbin.org/delay/{0}"; // delay in milliseconds before replying
         const string echoUri = "http://mockbin.org/echo"; // returns the POST data
 
-        /// <summary>
-        /// Default constructor. This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
-        /// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
-        /// region the Lambda function is executed in.
-        /// </summary>
         public Function()
         {
+            var enpointDelayValue = Environment.GetEnvironmentVariable("ENDPOINT_DELAY_SECONDS");
+            var TIMEOUT_SECONDSValue = Environment.GetEnvironmentVariable("TIMEOUT_SECONDS");
 
+            if (Int32.TryParse(enpointDelayValue, out var delay))
+            {
+                endpointDelay = delay;
+            }
+
+            if (Int32.TryParse(TIMEOUT_SECONDSValue, out var TIMEOUT_SECONDS))
+            {
+                callbackTimeout = TimeSpan.FromMilliseconds(TIMEOUT_SECONDS);
+            }
         }
 
-
-        /// <summary>
-        /// This method is called for every Lambda invocation. This method takes in an SQS event object and can be used 
-        /// to respond to SQS messages.
-        /// </summary>
-        /// <param name="evnt"></param>
-        /// <param name="context"></param>
-        /// <returns></returns>
         public async Task FunctionHandler(SQSEvent evnt, ILambdaContext context)
         {
             foreach (var message in evnt.Records)
@@ -44,12 +44,42 @@ namespace EventCallback
             }
         }
 
-        private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
+        private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context )
         {
             context.Logger.LogLine($"Processed message {message.Body}");
+            context.Logger.LogLine($"Endpoint Delay {endpointDelay}");
+            context.Logger.LogLine($"Callback Timeout {callbackTimeout}");
 
-            // TODO: Do interesting work based on the new message
-            await Task.CompletedTask;
+            var source = new CancellationTokenSource(callbackTimeout);
+            var token = source.Token;
+            var client = new HttpClient();
+
+            using (var registration = token.Register(() =>
+            {
+                context.Logger.LogLine($"Cancelling request after {callbackTimeout}");
+                client.CancelPendingRequests();
+            }))
+            {
+                var content = new StringContent(message.Body, Encoding.UTF8, "application/json");
+                var uri = new Uri(string.Format(delayedUriFormat, endpointDelay));
+
+                HttpResponseMessage response = null;
+
+                try
+                {
+                    response = await client.PostAsync(uri, content, token);
+                }
+                catch (OperationCanceledException) 
+                {
+                    
+                }
+                
+                if (response != null)
+                {
+                    context.Logger.LogLine($"Endpoint responded with {response.StatusCode}");
+                    context.Logger.LogLine($"Endpoint body {response.Content.ReadAsStringAsync().Result}");
+                }
+            }
         }
     }
 }
