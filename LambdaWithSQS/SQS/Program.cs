@@ -26,6 +26,7 @@ namespace SQS
 {
     class Program
     {
+        private static int _messageCount;
         private const string QueueName = "BatchQ";
 
         public static void Main(string[] args)
@@ -39,7 +40,7 @@ namespace SQS
                     Console.WriteLine("===========================================");
                     Console.WriteLine("Sending Batch Messages to {0}", qUrl);
                     Console.WriteLine("===========================================\n");
-                    for (int i = 0; i < 1; i++)
+                    for (int i = 0; i < 50; i++)
                     {
                         Task.WaitAll(SendBatchMessage(sqs, qUrl, 10));
                     }
@@ -54,13 +55,14 @@ namespace SQS
                 }
             }
 
+            Console.WriteLine("Total sent {0} messages", _messageCount);
             Console.WriteLine("Press Enter to continue...");
             Console.ReadLine();
         }
 
         static async Task SendBatchMessage(IAmazonSQS amazonSqsClient, string queueUrl, int numberOfMessage = 3)
         {
-            var batchId =Guid.NewGuid();
+            var batchId = Guid.NewGuid();
             var entry1 = CreateNewEntry($"Entry1-{batchId}", "John Doe", "123 Main St.");
             var entry2 = CreateNewEntry($"Entry2-{batchId}", "Jane Doe", "Any City, United States");
             var entry3 = CreateNewEntry($"Entry3-{batchId}", "Richard Doe", "789 East Blvd.");
@@ -75,8 +77,9 @@ namespace SQS
             {
                 for (int i = 0; i < numberOfMessage - 3; i++)
                 {
-                    request.Entries.Add(CreateNewEntry($"Message{i}-{batchId}", $"Tom {i}", "Don't know"));
+                    request.Entries.Add(CreateNewEntry($"Message{i + 3}-{batchId}", $"Tom {i}", "Don't know"));
                 }
+
             }
 
             var response = await amazonSqsClient.SendMessageBatchAsync(request, CancellationToken.None);
@@ -94,6 +97,9 @@ namespace SQS
                     Console.WriteLine("    MD5 of message body = " +
                       success.MD5OfMessageBody);
                 }
+                
+                Console.WriteLine("Successfully sent {0} messages with batch id ({1})", response.Successful.Count, batchId);
+                _messageCount += response.Successful.Count;
             }
 
             if (response.Failed.Count > 0)
@@ -133,7 +139,7 @@ namespace SQS
                         { DataType = "String", StringValue = "Any Town, United Kingdom" }
                     }
                  },
-                MessageBody = $"{name} customer information."
+                MessageBody = $"{name} customer information. {entryName}"
             };
         }
 
@@ -148,7 +154,7 @@ namespace SQS
             return myQueueUrl;
         }
 
-        
+
 
         private static void SendMessageToTheQueue(AmazonSQSClient sqs, string myQueueUrl)
         {

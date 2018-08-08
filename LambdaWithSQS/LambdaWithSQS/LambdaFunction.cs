@@ -38,7 +38,7 @@ namespace LambdaWithSQS
             var processId = Guid.NewGuid();
             foreach (var message in evnt.Records)
             {
-                context.Logger.LogLine($"Processing message {recordCount} - Id {processId}");
+                context.Logger.LogLine($"#{recordCount--}.  Id {processId}");
                 await ProcessLambdaMessageAsync(message, context);
             }
         }
@@ -46,7 +46,7 @@ namespace LambdaWithSQS
         private async Task ProcessLambdaMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
         {
             if (message.Body.Contains("Error:")) throw new Exception();
-
+            await Task.Delay(500);
             context.Logger.LogLine($"Processed message {message.Body}");
             context.Logger.LogLine("Attributes");
             context.Logger.LogLine("----------");
