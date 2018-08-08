@@ -12,7 +12,7 @@ namespace LambdaWithSQS.Tests
     public class LambdaFunctionTest
     {
         [Fact]
-        public async Task TestSQSEventLambdaFunction()
+        public async Task TestSqsEventLambdaFunction()
         {
             var sqsMessage = new SQSEvent.SQSMessage
             {
@@ -43,7 +43,7 @@ namespace LambdaWithSQS.Tests
         }     
         
         [Fact]
-        public async Task TestSQSEventLambdaFunctionWithDelay()
+        public async Task TestSqsEventLambdaFunctionWithDelay()
         {
             var sqsMessage = new SQSEvent.SQSMessage
             {
