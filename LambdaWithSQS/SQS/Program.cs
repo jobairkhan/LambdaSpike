@@ -85,7 +85,7 @@ namespace SQS
 
             for (int i = 0; i < numberOfMessage - 5; i++)
             {
-                request.Entries.Add(CreateNewEntry($"Message{i}-{_batchId}", $"Tom {i}", "Don't know", 9999));
+                request.Entries.Add(CreateNewEntry($"Message{i}-{_batchId}", $"Tom {i}", "Don't know", 14000));
             }
 
 

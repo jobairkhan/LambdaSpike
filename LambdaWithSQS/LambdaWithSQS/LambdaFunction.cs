@@ -54,7 +54,7 @@ namespace LambdaWithSQS
                     throw ex;
                 }
             }
-            Console.WriteLine($"{evnt.Records.Count} message completed");
+            Console.WriteLine($"{evnt.Records.Count} message(s) completed");
         }
 
         private async Task ProcessLambdaMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
