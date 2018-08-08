@@ -14,7 +14,7 @@ namespace EventCallback
 {
     public class Function
     {
-        int endpointDelay;
+        int endpointDelayMilliseconds;
         TimeSpan callbackTimeout;
 
         const string delayedUriFormat = "http://mockbin.org/delay/{0}"; // delay in milliseconds before replying
@@ -22,22 +22,24 @@ namespace EventCallback
 
         public Function()
         {
-            var enpointDelayValue = Environment.GetEnvironmentVariable("ENDPOINT_DELAY_SECONDS");
-            var TIMEOUT_SECONDSValue = Environment.GetEnvironmentVariable("TIMEOUT_SECONDS");
-
-            if (Int32.TryParse(enpointDelayValue, out var delay))
-            {
-                endpointDelay = delay;
-            }
-
-            if (Int32.TryParse(TIMEOUT_SECONDSValue, out var TIMEOUT_SECONDS))
-            {
-                callbackTimeout = TimeSpan.FromMilliseconds(TIMEOUT_SECONDS);
-            }
+           
         }
 
         public async Task FunctionHandler(SQSEvent evnt, ILambdaContext context)
         {
+            var enpointDelaySeconds = Environment.GetEnvironmentVariable("ENDPOINT_DELAY_SECONDS");
+            var timeoutSeconds = Environment.GetEnvironmentVariable("TIMEOUT_SECONDS");
+
+            if (Int32.TryParse(enpointDelaySeconds, out var delay))
+            {
+                endpointDelayMilliseconds = delay * 1000;
+            }
+
+            if (Int32.TryParse(timeoutSeconds, out var timeout))
+            {
+                callbackTimeout = TimeSpan.FromSeconds(timeout);
+            }
+
             foreach (var message in evnt.Records)
             {
                 await ProcessMessageAsync(message, context);
@@ -47,8 +49,8 @@ namespace EventCallback
         private async Task ProcessMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context )
         {
             context.Logger.LogLine($"Processed message {message.Body}");
-            context.Logger.LogLine($"Endpoint Delay {endpointDelay}");
-            context.Logger.LogLine($"Callback Timeout {callbackTimeout}");
+            context.Logger.LogLine($"Endpoint Delay (ms) {endpointDelayMilliseconds}");
+            context.Logger.LogLine($"Callback Timeout (s) {callbackTimeout.TotalSeconds}");
 
             var source = new CancellationTokenSource(callbackTimeout);
             var token = source.Token;
@@ -56,12 +58,12 @@ namespace EventCallback
 
             using (var registration = token.Register(() =>
             {
-                context.Logger.LogLine($"Cancelling request after {callbackTimeout}");
+                context.Logger.LogLine($"Cancelling request after {callbackTimeout.Seconds}s");
                 client.CancelPendingRequests();
             }))
             {
                 var content = new StringContent(message.Body, Encoding.UTF8, "application/json");
-                var uri = new Uri(string.Format(delayedUriFormat, endpointDelay));
+                var uri = new Uri(string.Format(delayedUriFormat, endpointDelayMilliseconds));
 
                 HttpResponseMessage response = null;
 

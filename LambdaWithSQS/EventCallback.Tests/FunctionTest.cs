@@ -9,7 +9,35 @@ namespace EventCallback.Tests
 {
     public class FunctionTest
     {
-       
+
+        [Fact]
+        public async Task lambda_call_when_environment_not_set()
+        {
+            var sqsEvent = new SQSEvent
+            {
+                Records = new List<SQSEvent.SQSMessage>
+                {
+                    new SQSEvent.SQSMessage
+                    {
+                        Body = "foobar"
+                    }
+                }
+            };
+
+            var logger = new TestLambdaLogger();
+            var context = new TestLambdaContext
+            {
+                Logger = logger
+            };
+
+
+            var function = new Function();
+            await function.FunctionHandler(sqsEvent, context);
+
+            var buffer = logger.Buffer.ToString();
+        }
+
+
         [Fact]
         public async Task lambda_calls_a_url_with_a_simple_JSON_payload()
         {
