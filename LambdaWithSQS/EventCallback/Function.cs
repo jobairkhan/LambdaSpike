@@ -58,7 +58,7 @@ namespace EventCallback
 
             using (var registration = token.Register(() =>
             {
-                context.Logger.LogLine($"Cancelling request after {callbackTimeout.Seconds}s");
+                context.Logger.LogLine($"Cancelling request after {callbackTimeout.TotalSeconds}s");
                 client.CancelPendingRequests();
             }))
             {
