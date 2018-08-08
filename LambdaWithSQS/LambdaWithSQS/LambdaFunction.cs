@@ -50,10 +50,11 @@ namespace LambdaWithSQS
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine(ex);
+                    Console.WriteLine($"Find Me:{ex}");
                     throw ex;
                 }
             }
+            Console.WriteLine($"{evnt.Records.Count} message completed");
         }
 
         private async Task ProcessLambdaMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
@@ -65,12 +66,9 @@ namespace LambdaWithSQS
 
             if (message.Body.Contains("Error:")) throw new PoisonMessageException(message.Body);
 
-
-            context.Logger.LogLine("----------");
             if (message.MessageAttributes != null)
-                context.Logger.LogLine(string.Join(",",
+                context.Logger.LogLine(string.Join(";",
                     message.MessageAttributes.Select(s => $"{s.Key}: {s.Value.StringValue}")));
-            context.Logger.LogLine("-----Eof-----");
 
             context.Logger.LogLine($"Processed message {message.Body}");
 

@@ -47,7 +47,7 @@ namespace SQS
                     Console.WriteLine("===========================================");
                     Console.WriteLine("Sending Batch Messages to {0}", qUrl);
                     Console.WriteLine("===========================================\n");
-                    for (var i = 0; i < 50; i++)
+                    for (var i = 0; i < 10; i++)
                     {
                         _batchId = i;
                         await SendBatchMessage(sqs, qUrl, 10);
@@ -73,7 +73,8 @@ namespace SQS
             var entry1 = CreateNewEntry($"Entry1-{_batchId}", "John Doe", "123 Main St.");
             var entry2 = CreateNewEntry($"Entry2-{_batchId}", "Jane Doe", "Any City, United States");
             var entry3 = CreateNewEntry($"Entry3-{_batchId}", "Richard Doe", "789 East Blvd.");
-            var entry4 = CreateNewEntry($"Entry4-{_batchId}", "Error: Poison Message", "Error Message");
+            //var entry4 = CreateNewEntry($"Entry4-{_batchId}", "Error: Poison Message", "Error Message");
+            var entry4 = CreateNewEntry($"Entry4-{_batchId}", "Good Message", "Good Message");
             var entry5 = CreateNewEntry($"Entry5-{_batchId}", "Number Five", "<Empty>");
 
             var request = new SendMessageBatchRequest
@@ -84,7 +85,7 @@ namespace SQS
 
             for (int i = 0; i < numberOfMessage - 5; i++)
             {
-                request.Entries.Add(CreateNewEntry($"Message{i}-{_batchId}", $"Tom {i}", "Don't know", i * 4999));
+                request.Entries.Add(CreateNewEntry($"Message{i}-{_batchId}", $"Tom {i}", "Don't know", 9999));
             }
 
 
