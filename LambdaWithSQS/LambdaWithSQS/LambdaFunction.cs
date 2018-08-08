@@ -48,16 +48,12 @@ namespace LambdaWithSQS
         {
             if (message.Body.Contains("Error:")) throw new Exception();
             var messageAttributeDelay = message.MessageAttributes?.FirstOrDefault(x => x.Key?.ToLower() == "delay");
-            if (int.TryParse(messageAttributeDelay?.Value?.StringValue, out var waitingTime))
-            {
-                context.Logger.LogLine($"Waiting time: {waitingTime}ms");
-                await Task.Delay(waitingTime);
-            }
-            else
-            {
-                context.Logger.LogLine("waiting for 500ms");
-                await Task.Delay(500);
-            }
+            if (!int.TryParse(messageAttributeDelay?.Value?.StringValue, out var waitingTime))
+                waitingTime = 500;
+
+            context.Logger.LogLine($"Waiting time: {waitingTime}ms");
+            await Task.Delay(waitingTime);
+
 
             context.Logger.LogLine($"Processed message {message.Body}");
 
