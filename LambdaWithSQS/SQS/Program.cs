@@ -27,22 +27,30 @@ namespace SQS
     class Program
     {
         private static int _messageCount;
+        private static int _batchId;
         private const string QueueName = "BatchQ";
 
         public static void Main(string[] args)
+        {
+            Task.WaitAll(Main());
+        }
+
+        static async Task Main()
         {
             using (var sqs = new AmazonSQSClient())
             {
 
                 try
                 {
-                    var qUrl = CreateNewQueue(sqs);
+                    var qUrl = await CreateNewQueue(sqs);
+
                     Console.WriteLine("===========================================");
                     Console.WriteLine("Sending Batch Messages to {0}", qUrl);
                     Console.WriteLine("===========================================\n");
-                    for (int i = 0; i < 50; i++)
+                    for (var i = 0; i < 50; i++)
                     {
-                        Task.WaitAll(SendBatchMessage(sqs, qUrl, 10));
+                        _batchId = i;
+                        await SendBatchMessage(sqs, qUrl, 10);
                     }
                 }
                 catch (AmazonSQSException ex)
@@ -60,27 +68,25 @@ namespace SQS
             Console.ReadLine();
         }
 
-        static async Task SendBatchMessage(IAmazonSQS amazonSqsClient, string queueUrl, int numberOfMessage = 3)
+        static async Task SendBatchMessage(IAmazonSQS amazonSqsClient, string queueUrl, int numberOfMessage = 5)
         {
-            var batchId = Guid.NewGuid();
-            var entry1 = CreateNewEntry($"Entry1-{batchId}", "John Doe", "123 Main St.");
-            var entry2 = CreateNewEntry($"Entry2-{batchId}", "Jane Doe", "Any City, United States");
-            var entry3 = CreateNewEntry($"Entry3-{batchId}", "Richard Doe", "789 East Blvd.");
+            var entry1 = CreateNewEntry($"Entry1-{_batchId}", "John Doe", "123 Main St.");
+            var entry2 = CreateNewEntry($"Entry2-{_batchId}", "Jane Doe", "Any City, United States");
+            var entry3 = CreateNewEntry($"Entry3-{_batchId}", "Richard Doe", "789 East Blvd.");
+            var entry4 = CreateNewEntry($"Entry4-{_batchId}", "Error: Poison Message", "Error Message");
+            var entry5 = CreateNewEntry($"Entry5-{_batchId}", "Number Five", "<Empty>");
 
             var request = new SendMessageBatchRequest
             {
-                Entries = new List<SendMessageBatchRequestEntry>() { entry1, entry2, entry3 },
+                Entries = new List<SendMessageBatchRequestEntry>() { entry1, entry2, entry3, entry4, entry5 },
                 QueueUrl = queueUrl
             };
 
-            if (numberOfMessage > 3)
+            for (int i = 0; i < numberOfMessage - 5; i++)
             {
-                for (int i = 0; i < numberOfMessage - 3; i++)
-                {
-                    request.Entries.Add(CreateNewEntry($"Message{i + 3}-{batchId}", $"Tom {i}", "Don't know"));
-                }
-
+                request.Entries.Add(CreateNewEntry($"Message{i}-{_batchId}", $"Tom {i}", "Don't know", i * 4999));
             }
+
 
             var response = await amazonSqsClient.SendMessageBatchAsync(request, CancellationToken.None);
 
@@ -97,8 +103,8 @@ namespace SQS
                     Console.WriteLine("    MD5 of message body = " +
                       success.MD5OfMessageBody);
                 }
-                
-                Console.WriteLine("Successfully sent {0} messages with batch id ({1})", response.Successful.Count, batchId);
+
+                Console.WriteLine("Successfully sent {0} messages with batch id ({1})", response.Successful.Count, _batchId);
                 _messageCount += response.Successful.Count;
             }
 
@@ -118,17 +124,22 @@ namespace SQS
 
         }
 
-        private static SendMessageBatchRequestEntry CreateNewEntry(string entryName, string name, string address, int delaySeconds = 0)
+
+        private static SendMessageBatchRequestEntry CreateNewEntry(string entryName, string name, string address, int waitingTime = 0)
         {
             return new SendMessageBatchRequestEntry
             {
-                DelaySeconds = delaySeconds,
+                DelaySeconds = 0,
                 Id = entryName,
                 MessageAttributes = new Dictionary<string, MessageAttributeValue>
                 {
                     {
                       "name", new MessageAttributeValue
                         { DataType = "String", StringValue = name }
+                    },
+                    {
+                      "delay", new MessageAttributeValue
+                        { DataType = "String", StringValue = waitingTime.ToString() }
                     },
                     {
                       "address", new MessageAttributeValue
@@ -143,20 +154,20 @@ namespace SQS
             };
         }
 
-        private static string CreateNewQueue(AmazonSQSClient sqs)
+        private static async Task<string> CreateNewQueue(AmazonSQSClient sqs)
         {
             Console.WriteLine("===========================================");
             Console.WriteLine("Getting Started with Amazon SQS");
             Console.WriteLine("===========================================\n");
             var myQueueUrl = CreateQueue(sqs);
-            SendMessageToTheQueue(sqs, myQueueUrl);
+            await SendMessageToTheQueue(sqs, myQueueUrl);
             //ReceiveMessage(sqs, myQueueUrl);
             return myQueueUrl;
         }
 
 
 
-        private static void SendMessageToTheQueue(AmazonSQSClient sqs, string myQueueUrl)
+        private static async Task SendMessageToTheQueue(AmazonSQSClient sqs, string myQueueUrl)
         {
             //Sending a message
             Console.WriteLine("Sending a message to MyQueue.\n");
@@ -169,7 +180,8 @@ namespace SQS
                     {"singleMessage", new MessageAttributeValue{DataType = "Number", StringValue = "1"}}
                 }
             };
-            sqs.SendMessage(sendMessageRequest);
+            await sqs.SendMessageAsync(sendMessageRequest);
+            _messageCount++;
         }
 
         private static string CreateQueue(AmazonSQSClient sqs)

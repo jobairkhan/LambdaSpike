@@ -39,29 +39,58 @@ namespace LambdaWithSQS
             var processId = Guid.NewGuid();
             foreach (var message in evnt.Records)
             {
-                context.Logger.LogLine($"#{recordCount--}.  Id {processId}");
-                await ProcessLambdaMessageAsync(message, context);
+                try
+                {
+                    context.Logger.LogLine($"#{recordCount--}.  Id {processId}");
+                    await ProcessLambdaMessageAsync(message, context);
+                }
+                catch (PoisonMessageException)
+                {
+                    Console.WriteLine(message.Body);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                    throw ex;
+                }
             }
         }
 
         private async Task ProcessLambdaMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
         {
-            if (message.Body.Contains("Error:")) throw new Exception();
-            var messageAttributeDelay = message.MessageAttributes?.FirstOrDefault(x => x.Key?.ToLower() == "delay");
-            if (!int.TryParse(messageAttributeDelay?.Value?.StringValue, out var waitingTime))
-                waitingTime = 500;
-
+            var waitingTime = GetWaitingTime(message);
             context.Logger.LogLine($"Waiting time: {waitingTime}ms");
             await Task.Delay(waitingTime);
 
 
-            context.Logger.LogLine($"Processed message {message.Body}");
+            if (message.Body.Contains("Error:")) throw new PoisonMessageException(message.Body);
+
 
             context.Logger.LogLine("----------");
-            context.Logger.LogLine(string.Join(",", message.MessageAttributes.Select(s => $"{s.Key}: {s.Value.StringValue}")));
+            if (message.MessageAttributes != null)
+                context.Logger.LogLine(string.Join(",",
+                    message.MessageAttributes.Select(s => $"{s.Key}: {s.Value.StringValue}")));
             context.Logger.LogLine("-----Eof-----");
 
+            context.Logger.LogLine($"Processed message {message.Body}");
+
             await Task.CompletedTask;
+        }
+
+        private static int GetWaitingTime(SQSEvent.SQSMessage message)
+        {
+            var messageAttributeDelay = message.MessageAttributes?.FirstOrDefault(x => x.Key?.ToLower() == "delay");
+            int.TryParse(messageAttributeDelay?.Value?.StringValue, out var waitingTime);
+            return waitingTime <= 0 ? 500 : waitingTime;
+        }
+    }
+
+    internal class PoisonMessageException : Exception
+    {
+        public PoisonMessageException(string msgBody)
+        : base($"Poison message {msgBody}")
+        {
+
         }
     }
 }
