@@ -11,66 +11,61 @@ namespace LambdaWithSQS.Tests
 {
     public class LambdaFunctionTest
     {
+        private readonly SQSEvent.SQSMessage _sqsMessage;
+        private readonly TestLambdaLogger _testLambdaLogger;
+        private readonly TestLambdaContext _testLambdaContext;
+        private readonly LambdaFunction _targetLambdaFunction;
+
+        public LambdaFunctionTest()
+        {
+            _sqsMessage = new SQSEvent.SQSMessage
+            {
+                Body = "foobar"
+            };
+
+            _testLambdaLogger = new TestLambdaLogger();
+            _testLambdaContext = new TestLambdaContext
+            {
+                Logger = _testLambdaLogger
+            };
+
+            _targetLambdaFunction = new LambdaFunction();
+        }
+
         [Fact]
         public async Task TestSqsEventLambdaFunction()
         {
-            var sqsMessage = new SQSEvent.SQSMessage
-            {
-                Body = "foobar"
-            };
-            sqsMessage.MessageAttributes = new Dictionary<string, SQSEvent.MessageAttribute>
-            {
-                {"attr", new SQSEvent.MessageAttribute{DataType = "String", StringValue = "Test"}}
-            };
-            var sqsEvent = new SQSEvent
-            {
-                Records = new List<SQSEvent.SQSMessage>
-                {
-                    sqsMessage
-                }
-            };
+            var sqsEvent = CreateSqsEventWithAttribute("attr", "Test");
 
-            var logger = new TestLambdaLogger();
-            var context = new TestLambdaContext
-            {
-                Logger = logger
-            };
+            await _targetLambdaFunction.Handler(sqsEvent, _testLambdaContext);
 
-            var function = new LambdaFunction();
-            await function.Handler(sqsEvent, context);
+            Assert.Contains("attr: Test", _testLambdaLogger.Buffer.ToString());
+        }
 
-            Assert.Contains("attr: Test", logger.Buffer.ToString());
-        }     
-        
         [Fact]
         public async Task TestSqsEventLambdaFunctionWithDelay()
         {
-            var sqsMessage = new SQSEvent.SQSMessage
+            var sqsEvent = CreateSqsEventWithAttribute("delay", "10");
+            
+            await _targetLambdaFunction.Handler(sqsEvent, _testLambdaContext);
+
+            Assert.Contains("Waiting time: 10ms", _testLambdaLogger.Buffer.ToString());
+        }
+
+        private SQSEvent CreateSqsEventWithAttribute(string key, string value)
+        {
+            _sqsMessage.MessageAttributes = new Dictionary<string, SQSEvent.MessageAttribute>
             {
-                Body = "foobar"
-            };
-            sqsMessage.MessageAttributes = new Dictionary<string, SQSEvent.MessageAttribute>
-            {
-                {"delay", new SQSEvent.MessageAttribute{DataType = "String", StringValue = "10"}}
+                {key, new SQSEvent.MessageAttribute{DataType = "String", StringValue = value}}
             };
             var sqsEvent = new SQSEvent
             {
                 Records = new List<SQSEvent.SQSMessage>
                 {
-                    sqsMessage
+                    _sqsMessage
                 }
             };
-
-            var logger = new TestLambdaLogger();
-            var context = new TestLambdaContext
-            {
-                Logger = logger
-            };
-
-            var function = new LambdaFunction();
-            await function.Handler(sqsEvent, context);
-
-            Assert.Contains("Waiting time: 10ms", logger.Buffer.ToString());
+            return sqsEvent;
         }
     }
 }
