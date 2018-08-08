@@ -18,9 +18,9 @@ namespace LambdaWithSQS.Tests
             {
                 Body = "foobar"
             };
-            sqsMessage.Attributes = new Dictionary<string, string>
+            sqsMessage.MessageAttributes = new Dictionary<string, SQSEvent.MessageAttribute>
             {
-                {"attr", "Test"}
+                {"attr", new SQSEvent.MessageAttribute{DataType = "String", StringValue = "Test"}}
             };
             var sqsEvent = new SQSEvent
             {
@@ -40,6 +40,37 @@ namespace LambdaWithSQS.Tests
             await function.Handler(sqsEvent, context);
 
             Assert.Contains("attr: Test", logger.Buffer.ToString());
+        }     
+        
+        [Fact]
+        public async Task TestSQSEventLambdaFunctionWithDelay()
+        {
+            var sqsMessage = new SQSEvent.SQSMessage
+            {
+                Body = "foobar"
+            };
+            sqsMessage.MessageAttributes = new Dictionary<string, SQSEvent.MessageAttribute>
+            {
+                {"delay", new SQSEvent.MessageAttribute{DataType = "String", StringValue = "10"}}
+            };
+            var sqsEvent = new SQSEvent
+            {
+                Records = new List<SQSEvent.SQSMessage>
+                {
+                    sqsMessage
+                }
+            };
+
+            var logger = new TestLambdaLogger();
+            var context = new TestLambdaContext
+            {
+                Logger = logger
+            };
+
+            var function = new LambdaFunction();
+            await function.Handler(sqsEvent, context);
+
+            Assert.Contains("Waiting time: 10ms", logger.Buffer.ToString());
         }
     }
 }

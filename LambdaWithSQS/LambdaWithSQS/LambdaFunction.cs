@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 using Amazon.Lambda.Core;
@@ -46,11 +47,23 @@ namespace LambdaWithSQS
         private async Task ProcessLambdaMessageAsync(SQSEvent.SQSMessage message, ILambdaContext context)
         {
             if (message.Body.Contains("Error:")) throw new Exception();
-            await Task.Delay(500);
+            var messageAttributeDelay = message.MessageAttributes?.FirstOrDefault(x => x.Key?.ToLower() == "delay");
+            if (int.TryParse(messageAttributeDelay?.Value?.StringValue, out var waitingTime))
+            {
+                context.Logger.LogLine($"Waiting time: {waitingTime}ms");
+                await Task.Delay(waitingTime);
+            }
+            else
+            {
+                context.Logger.LogLine("waiting for 500ms");
+                await Task.Delay(500);
+            }
+
             context.Logger.LogLine($"Processed message {message.Body}");
-            context.Logger.LogLine("Attributes");
+
             context.Logger.LogLine("----------");
-            context.Logger.LogLine(string.Join(",", message.Attributes.Select(s => $"{s.Key}: {s.Value}")));
+            context.Logger.LogLine(string.Join(",", message.MessageAttributes.Select(s => $"{s.Key}: {s.Value.StringValue}")));
+            context.Logger.LogLine("-----Eof-----");
 
             await Task.CompletedTask;
         }
