@@ -11,34 +11,6 @@ namespace EventCallback.Tests
     {
 
         [Fact]
-        public async Task lambda_call_when_environment_not_set()
-        {
-            var sqsEvent = new SQSEvent
-            {
-                Records = new List<SQSEvent.SQSMessage>
-                {
-                    new SQSEvent.SQSMessage
-                    {
-                        Body = "foobar"
-                    }
-                }
-            };
-
-            var logger = new TestLambdaLogger();
-            var context = new TestLambdaContext
-            {
-                Logger = logger
-            };
-
-
-            var function = new Function();
-            await function.FunctionHandler(sqsEvent, context);
-
-            var buffer = logger.Buffer.ToString();
-        }
-
-
-        [Fact]
         public async Task lambda_calls_a_url_with_a_simple_JSON_payload()
         {
             var sqsEvent = new SQSEvent
@@ -101,12 +73,12 @@ namespace EventCallback.Tests
             var buffer = logger.Buffer.ToString();
 
             Assert.Contains("Processed message foobar", buffer);
-            Assert.Contains("Cancelling request after", buffer);
+            Assert.Contains("Canceling request after", buffer);
             Assert.DoesNotContain("Endpoint responded with OK", buffer);
         }
 
         [Fact]
-        public async Task lambda_calls_a_url_which_responds_before_timout()
+        public async Task lambda_calls_a_url_which_responds_before_timeout()
         {
             var sqsEvent = new SQSEvent
             {
@@ -137,7 +109,7 @@ namespace EventCallback.Tests
 
             Assert.Contains("Processed message foobar", buffer);
             Assert.Contains("Endpoint responded with OK", buffer);
-            Assert.DoesNotContain("Cancelling request after", buffer);
+            Assert.DoesNotContain("Canceling request after", buffer);
         }
     }
 }

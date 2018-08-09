@@ -20,22 +20,17 @@ namespace EventCallback
         const string delayedUriFormat = "http://mockbin.org/delay/{0}"; // delay in milliseconds before replying
         const string echoUri = "http://mockbin.org/echo"; // returns the POST data
 
-        public Function()
-        {
-           
-        }
-
         public async Task FunctionHandler(SQSEvent evnt, ILambdaContext context)
         {
-            var enpointDelaySeconds = Environment.GetEnvironmentVariable("ENDPOINT_DELAY_SECONDS");
+            var endpointDelaySeconds = Environment.GetEnvironmentVariable("ENDPOINT_DELAY_SECONDS");
             var timeoutSeconds = Environment.GetEnvironmentVariable("TIMEOUT_SECONDS");
 
-            if (Int32.TryParse(enpointDelaySeconds, out var delay))
+            if (int.TryParse(endpointDelaySeconds, out var delay))
             {
                 endpointDelayMilliseconds = delay * 1000;
             }
 
-            if (Int32.TryParse(timeoutSeconds, out var timeout))
+            if (int.TryParse(timeoutSeconds, out var timeout))
             {
                 callbackTimeout = TimeSpan.FromSeconds(timeout);
             }
@@ -58,7 +53,7 @@ namespace EventCallback
 
             using (var registration = token.Register(() =>
             {
-                context.Logger.LogLine($"Cancelling request after {callbackTimeout.TotalSeconds}s");
+                context.Logger.LogLine($"Canceling request after {callbackTimeout.TotalSeconds}s");
                 client.CancelPendingRequests();
             }))
             {
