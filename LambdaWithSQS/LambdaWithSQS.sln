@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventCallback", "EventCallb
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EventCallback.Tests", "EventCallback.Tests\EventCallback.Tests.csproj", "{7CC29188-5409-47D0-8E2C-38E0DE850C98}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Authentication", "Authentication2\Authentication.csproj", "{0DBF4E9E-0F99-4644-A643-2BFD0A567A5F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{7CC29188-5409-47D0-8E2C-38E0DE850C98}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7CC29188-5409-47D0-8E2C-38E0DE850C98}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7CC29188-5409-47D0-8E2C-38E0DE850C98}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0DBF4E9E-0F99-4644-A643-2BFD0A567A5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0DBF4E9E-0F99-4644-A643-2BFD0A567A5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0DBF4E9E-0F99-4644-A643-2BFD0A567A5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0DBF4E9E-0F99-4644-A643-2BFD0A567A5F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

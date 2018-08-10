@@ -1,0 +1,43 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Transform" : "AWS::Serverless-2016-10-31",
+  "Description" : "An AWS Serverless Application that uses the ASP.NET Core framework running in Amazon Lambda.",
+
+  "Resources" : {
+
+    "AspNetCoreFunction" : {
+      "Type" : "AWS::Serverless::Function",
+        "Properties": {
+            "Handler": "Authentication::Authentication.LambdaEntryPoint::FunctionHandlerAsync",
+            "Runtime": "dotnetcore2.1",
+            "CodeUri": "",
+            "MemorySize": 256,
+            "Timeout": 30,
+            "Role": "arn:aws:iam::130075576898:role/AWSServerless2-AspNetCoreFunctionRole-UQPE5775HO91",
+            "Policies": [ "AWSLambdaFullAccess" ],
+            "VpcConfig": {
+                "SecurityGroupIds": [ "sg-92d121fb" ],
+                "SubnetIds": [ "subnet-865aadef", "subnet-f6fcd5bc", "subnet-b0fbf2c8" ]
+            },
+            "Events": {
+                "PutResource": {
+                    "Type": "Api",
+                    "Properties": {
+                        "Path": "/{proxy+}",
+                        "Method": "ANY"
+                    }
+                }
+            }
+        }
+    }
+
+    
+  },
+
+  "Outputs" : {
+    "ApiURL" : {
+        "Description" : "API endpoint URL for Prod environment",
+        "Value" : { "Fn::Sub" : "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/" }
+    }
+  }
+}
